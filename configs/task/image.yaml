@@ -1,0 +1,26 @@
+# @package _global_
+defaults:
+  - /model: image/small
+
+task:
+  name: image-classification
+
+training:
+  num_epochs: 400 #250
+  per_device_batch_size: 100 #50 #50
+  per_device_eval_batch_size: 100 #50
+  num_workers: 96 #40
+  cut_mix: 0.0
+  pad_unit: 1024 #32768 #524288
+  no_time_information: true
+  loss_type: cross_entropy
+  
+optimizer:
+  ssm_base_lr: 0.00005
+  lr_factor: 4
+  warmup_epochs: 1
+  ssm_weight_decay: 0.05
+  weight_decay: 0.1
+  schedule: cosine
+  accumulation_steps: 1
+  proj_weight_decay: 0.1

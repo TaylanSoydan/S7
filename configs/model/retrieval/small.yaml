@@ -1,0 +1,29 @@
+# @package _global_
+
+model:
+  ssm_init:
+    C_init: lecun_normal
+    dt_min: 0.001
+    dt_max: 0.1
+    conj_sym: false
+    clip_eigs: false
+    input_dependent: true
+    stablessm_a: true
+    separate_dbc: false
+    log_a: false
+    bidirectional: false
+  ssm:
+    discretization: zoh
+    d_model: 80
+    d_ssm: 10
+    ssm_block_size: 5
+    num_stages: 1
+    num_layers_per_stage: 3
+    dropout: 0.10521507503350508
+    classification_mode: pool
+    prenorm: true
+    batchnorm: true
+    bn_momentum: 0.95
+    pooling_stride: 1
+    pooling_mode: last
+    state_expansion_factor: 1

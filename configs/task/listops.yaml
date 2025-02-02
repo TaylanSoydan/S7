@@ -1,0 +1,26 @@
+# @package _global_
+defaults:
+  - /model: listops/small
+
+task:
+  name: listops-classification
+
+training:
+  num_epochs: 200
+  per_device_batch_size: 50 #50
+  per_device_eval_batch_size: 50 #50
+  num_workers: 48
+  cut_mix: 0.0
+  pad_unit: 2048 #32768 #524288
+  no_time_information: true
+  loss_type: cross_entropy
+  
+optimizer:
+  ssm_base_lr: 0.00001
+  lr_factor: 3
+  warmup_epochs: 10
+  ssm_weight_decay: 0.0
+  weight_decay: 0.04
+  schedule: cosine
+  accumulation_steps: 1
+  proj_weight_decay: 0.0

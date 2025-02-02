@@ -1,0 +1,26 @@
+# @package _global_
+defaults:
+  - /model: pathfinder/small
+
+task:
+  name: pathfinder-classification
+
+training:
+  num_epochs: 200
+  per_device_batch_size: 8
+  per_device_eval_batch_size: 20
+  num_workers: 40
+  cut_mix: 0.0
+  pad_unit: 1024
+  no_time_information: true
+  loss_type: cross_entropy
+
+optimizer:
+  ssm_base_lr: 5.4748483262640895e-05
+  lr_factor: 2.5
+  warmup_epochs: 1
+  ssm_weight_decay: 0.011039525864091735
+  weight_decay: 0.014591460079123634
+  schedule: cosine
+  accumulation_steps: 1
+  proj_weight_decay: 0.012285834215439204

@@ -1,0 +1,34 @@
+# @package _global_
+
+model:
+  ssm_init:
+    C_init: trunc_standard_normal
+    dt_min: 0.001
+    dt_max: 0.1
+    conj_sym: true
+    clip_eigs: true
+    input_dependent: false
+    stablessm_a: false
+    separate_dbc: false
+    log_a: false
+    bidirectional: true
+    a: 1
+    b: 0.5
+  ssm:
+    discretization: async
+    d_model: 192
+    d_ssm: 256
+    ssm_block_size: 32
+    num_stages: 1
+    num_layers_per_stage: 3
+    dropout: 0
+    classification_mode: pool
+    prenorm: true
+    batchnorm: true
+    bn_momentum: 0.9
+    pooling_stride: 1
+    pooling_mode: last
+    state_expansion_factor: 1
+    encoder_type: embed
+
+    

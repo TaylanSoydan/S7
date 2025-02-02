@@ -1,0 +1,26 @@
+# @package _global_
+defaults:
+  - /model: personactivity/small
+
+task:
+  name: personactivity-classification
+
+training:
+  num_epochs: 100 #200
+  per_device_batch_size: 2 #128 #64
+  per_device_eval_batch_size: 2 #128 #64
+  num_workers: 96
+  cut_mix: 0.0
+  pad_unit: 32 
+  no_time_information: false
+  loss_type: cross_entropy
+  
+optimizer:
+  ssm_base_lr: 0.0001
+  lr_factor: 2
+  warmup_epochs: 1
+  ssm_weight_decay: 0.0
+  weight_decay: 0.0
+  schedule: cosine
+  accumulation_steps: 1
+  proj_weight_decay: 0.0

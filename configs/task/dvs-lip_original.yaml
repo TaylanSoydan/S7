@@ -1,0 +1,41 @@
+# @package _global_
+defaults:
+  - /model: dvs/small
+
+task:
+  name: dvs-lip-classification
+
+training:
+  num_epochs: 100
+  per_device_batch_size: 20 #16
+  per_device_eval_batch_size: 4
+  num_workers: 40
+
+  cut_mix: 0.5
+  geometric: 0.3
+  time_jitter: 100
+  spatial_jitter: 1.0
+  noise: 100
+  drop_event: 0.1
+  time_skew: 1.1
+  cut_mix: 0.5 
+  downsampling: 1
+  max_roll: 4
+  max_angle: 10
+  max_scale: 1.5
+  max_drop_chunk: 0.1
+
+  pad_unit: 32768 #524288 # 128 * 128 * 2 * 16
+  slice_events: 16384 #65536 # 128 * 128 * 2 * 2  16384
+  validate_on_test: true
+
+
+optimizer:
+  ssm_base_lr: 0.000012 
+  lr_factor: 6
+  warmup_epochs: 10
+  ssm_weight_decay: 0.0
+  weight_decay: 0.02
+  proj_weight_decay: 0.0 # New
+  schedule: cosine
+  accumulation_steps: 4
