@@ -10,7 +10,7 @@ from flax import jax_utils
 from flax.training import checkpoints
 
 from event_ssm.dataloading import *
-from event_ssm.ssm import init_S7SSM
+from event_ssm.ssm import init_S5SSM
 from event_ssm.seq_model import *
 from event_ssm.train_utils import training_step, evaluation_step, init_model_state
 from event_ssm.trainer import TrainerModule
@@ -48,7 +48,7 @@ def setup_training(key ,cfg: DictConfig):
     # load model
     print("[*] Creating model...")
     print(cfg.task.name)
-    ssm_init_fn = init_S7SSM(**cfg.model.ssm_init)
+    ssm_init_fn = init_S5SSM(**cfg.model.ssm_init)
     if cfg.task.name=="retrieval-classification":
         print("Using Retrieval Head")
         model = RetrievalModel(

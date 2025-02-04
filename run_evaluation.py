@@ -9,7 +9,7 @@ import optax
 from flax.training import checkpoints
 
 from event_ssm.dataloading import Datasets
-from event_ssm.ssm import init_S7SSM
+from event_ssm.ssm import init_S5SSM
 from event_ssm.seq_model import BatchClassificationModel
 from event_ssm.dataloading import *
 
@@ -40,13 +40,24 @@ def setup_evaluation(cfg: DictConfig):
 
     # load model
     print("[*] Creating model...")
-    ssm_init_fn = init_S7SSM(**cfg.model.ssm_init)
-    model = BatchClassificationModel(
-        ssm=ssm_init_fn,
-        num_classes=data.n_classes,
-        num_embeddings=data.num_embeddings,
-        **cfg.model.ssm,
-    )
+    ssm_init_fn = init_S5SSM(**cfg.model.ssm_init)
+    if cfg.task.name == "retrieval-classification":
+        from event_ssm.seq_model import RetrievalModel
+        print("Using Retrieval Head for Evaluation")
+        model = RetrievalModel(
+            ssm=ssm_init_fn,
+            num_classes=data.n_classes,
+            num_embeddings=data.num_embeddings,
+            **cfg.model.ssm,
+        )
+    else:
+        model = BatchClassificationModel(
+            ssm=ssm_init_fn,
+            num_classes=data.n_classes,
+            num_embeddings=data.num_embeddings,
+            **cfg.model.ssm,
+        )
+
 
     # initialize training state
     state = checkpoints.restore_checkpoint(cfg.checkpoint, target=None)
@@ -61,26 +72,26 @@ def evaluation_step(
         params,
         model_state,
         batch,
-        loss_type: str = 'cross_entropy'
+        loss_type,
 ):
     """
-    Evaluates the loss of the function passed as an argument on a batch, supporting different loss types.
+    Evaluates the loss of the function passed as argument on a batch
 
-    :param apply_fn: The model's apply function.
-    :param params: Model parameters.
-    :param model_state: The state of the model (e.g., batch stats).
-    :param batch: The data batch consisting of [inputs, targets, integration_timesteps, lengths].
-    :param loss_type: The type of loss function to use ('cross_entropy', 'one_hot_cross_entropy', 'mse').
-    :return: Dictionary containing metrics {'loss', 'accuracy', 'perplexity' (if applicable)}, and predictions.
+    :param train_state: a Flax TrainState that carries the parameters, optimizer states etc
+    :param batch: the data consisting of [data, target]
+    :return: train_state, metrics
     """
     inputs, targets, integration_timesteps, lengths = batch
     logits = apply_fn(
+
         {'params': params, **model_state},
         inputs, integration_timesteps, lengths,
-        False,  # Evaluation mode
+        False,
     )
 
-    # Compute the loss based on the specified type
+    #loss = optax.softmax_cross_entropy(logits, targets)
+    #loss = loss.mean()
+    
     if loss_type == 'cross_entropy':
         loss = optax.softmax_cross_entropy(logits, targets)
     elif loss_type == 'one_hot_cross_entropy':
@@ -89,24 +100,27 @@ def evaluation_step(
         loss = optax.l2_loss(logits, targets)
     else:
         raise ValueError(f'Unknown loss_type: {loss_type}')
-
     loss = loss.mean()
+    
+    
+    #preds = jnp.argmax(logits, axis=-1)
+    #targets = jnp.argmax(targets, axis=-1)
+    #accuracy = (preds == targets).mean()
 
-    # Compute predictions and accuracy
     preds = jnp.argmax(logits, axis=-1)
     if loss_type == "one_hot_cross_entropy":
-        targets_class = targets  
+        targets_class = targets  # Already in class format
     else:
         targets_class = jnp.argmax(targets, axis=-1)
 
     if loss_type in {"cross_entropy", "one_hot_cross_entropy"}:
         accuracy = (preds == targets_class).mean()
-        perplexity = jnp.exp(loss)  # Compute perplexity only for cross-entropy
+        perplexity = jnp.exp(loss)
     elif loss_type == "mse":
-        accuracy = -loss  # No classification-based accuracy; negative loss serves as proxy
-        perplexity = None  # Perplexity is not defined for MSE
+        accuracy = -loss  # MSE does not have a direct accuracy equivalent
+        perplexity = None
 
-    # Construct the output metrics dictionary
+    #return {'loss': loss, 'accuracy': accuracy}, preds
     metrics = {'loss': loss, 'accuracy': accuracy}
     if perplexity is not None:
         metrics['perplexity'] = perplexity
@@ -118,7 +132,7 @@ def main(config: DictConfig):
     print(om.to_yaml(config))
 
     model, params, model_state, train_loader, val_loader, test_loader = setup_evaluation(cfg=config)
-    step = partial(evaluation_step, model.apply, params, model_state)
+    step = partial(evaluation_step, model.apply, params, model_state, loss_type=config.training.loss_type)
     step = jax.jit(step)
 
     # run training
@@ -148,6 +162,8 @@ def main(config: DictConfig):
     metrics = {key: jnp.mean(metrics[key] / num_batches).item() for key in metrics}
 
     print(f"[*] Test accuracy: {100 * metrics['accuracy']:.2f}%")
+    if 'perplexity' in metrics:
+        print(f"[*] Test perplexity: {metrics['perplexity']:.2f}")
 
 
 if __name__ == '__main__':
