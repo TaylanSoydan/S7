@@ -44,7 +44,7 @@
 1. **Run Training**:
    - Execute the training script with the specified task. Example:
      ```bash
-     CUDA_VISIBLE_DEVICES=0 python3 run_training.py task=wikitext2
+     CUDA_VISIBLE_DEVICES=0 python3 run_training.py task=text
      ```
 
 2. **Run a Weights & Biases Sweep**:
@@ -57,7 +57,7 @@
 3. **Evaluate a Checkpoint**:
    - Use the following command to evaluate a checkpoint:
      ```bash
-     CUDA_VISIBLE_DEVICES=0 python3 task=listops checkpoint=/home/tsoyda/data/RPG/master_thesis_taylan_soydan/event-ssm/outputs/2024-08-04-05-19-28/checkpoints/
+     CUDA_VISIBLE_DEVICES=6 python run_evaluation.py task=text checkpoint=/data/old_home/tsoydan/RPG/event-ssm/checkpoints/best_text/checkpoints
      ```
     Make sure that the model and task config parameters are in accordance with the checkpoint model. For example if the checkpoint d_ssm = 70, /configs/model/listops/small.yaml d_ssm should also equal 70.
 
