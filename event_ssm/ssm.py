@@ -16,7 +16,7 @@ def discretize_zoh(Lambda, step_delta, time_delta):
     """
     Discretize a diagonalized, continuous-time linear SSM
     using zero-order hold method.
-    This is the default discretization method used by many SSM works including S7.
+    This is the default discretization method used by many SSM works including S5.
 
     :param Lambda: diagonal state matrix (P,)
     :param step_delta: discretization step sizes (P,)
@@ -84,7 +84,7 @@ def apply_ssm(Lambda_elements, Bu_elements, C_tilde, conj_sym, stride=1, input_d
     :param Bu_elements: (complex64) discretized inputs projected to state space (L, P)
     :param C_tilde: (complex64) output matrix (H, P)
     :param conj_sym: (bool) whether conjugate symmetry is enforced
-    :return: ys: (float32) the SSM outputs (S7 layer preactivations) (L, H)
+    :return: ys: (float32) the SSM outputs (S5 layer preactivations) (L, H)
     """
     remaining_timesteps = (Bu_elements.shape[0] // stride) * stride
 
@@ -149,7 +149,7 @@ class SimpleDense(nn.Module):
         y = y + bias
         return y
 
-class S7SSM(nn.Module):
+class S5SSM(nn.Module):
     H_in: int
     H_out: int
     P: int
@@ -172,7 +172,7 @@ class S7SSM(nn.Module):
     b: float = 0.5
 
     """
-    Event-based S7 module
+    Event-based S5 module
     
     :param H_in: int, SSM input dimension
     :param H_out: int, SSM output dimension
@@ -360,7 +360,7 @@ class S7SSM(nn.Module):
 
     def __call__(self, input_sequence, integration_timesteps):
         """
-        Compute the LxH output of the S7 SSM given an LxH input sequence using a parallel scan.
+        Compute the LxH output of the S5 SSM given an LxH input sequence using a parallel scan.
 
         :param input_sequence: (float32) input sequence (L, H)
         :param integration_timesteps: (float32) integration timesteps (L,)
@@ -448,7 +448,7 @@ class S7SSM(nn.Module):
         return ys + Du 
 
 
-def init_S7SSM(
+def init_S5SSM(
         C_init,
         dt_min,
         dt_max,
@@ -464,9 +464,9 @@ def init_S7SSM(
 ):
     """
     Convenience function that will be used to initialize the SSM.
-    Same arguments as defined in S7SSM above.
+    Same arguments as defined in S5SSM above.
     """
-    return partial(S7SSM,
+    return partial(S5SSM,
                    C_init=C_init,
                    dt_min=dt_min,
                    dt_max=dt_max,
