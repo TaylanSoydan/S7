@@ -8,7 +8,7 @@ model:
     conj_sym: false
     clip_eigs: false
     input_dependent: true
-    stablessm_a: true
+    stablessm_a: false
     separate_dbc: false
     log_a: false
     bidirectional: false

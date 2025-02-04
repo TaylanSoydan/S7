@@ -3,32 +3,28 @@
 model:
   ssm_init:
     C_init: trunc_standard_normal
-    dt_min: 0.001
+    dt_min: 5.0e-05
     dt_max: 0.1
     conj_sym: true
-    clip_eigs: true
-    input_dependent: false
+    clip_eigs: false
+    input_dependent: true
     stablessm_a: false
     separate_dbc: false
     log_a: false
-    bidirectional: true
-    a: 1
-    b: 0.5
+    bidirectional: false
   ssm:
-    discretization: async
-    d_model: 192
-    d_ssm: 256
-    ssm_block_size: 32
+    discretization: zoh
+    d_model: 50
+    d_ssm: 2
+    ssm_block_size: 2
     num_stages: 1
-    num_layers_per_stage: 3
-    dropout: 0
+    num_layers_per_stage: 6
+    dropout: 0.006383445496769972
     classification_mode: pool
     prenorm: true
     batchnorm: true
-    bn_momentum: 0.9
+    bn_momentum: 0.95
     pooling_stride: 1
     pooling_mode: last
     state_expansion_factor: 1
     encoder_type: embed
-
-    

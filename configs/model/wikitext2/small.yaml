@@ -3,29 +3,28 @@
 model:
   ssm_init:
     C_init: lecun_normal
-    dt_min: 0.001
+    dt_min: 3.3528788827593204e-07
     dt_max: 0.1
-    conj_sym: true
-    clip_eigs: true #true
-    input_dependent: true # New
-    stablessm_a: true # New
-    separate_dbc: false # New
-    log_a: false # New
-    bidirectional: true #true # New
+    conj_sym: false
+    clip_eigs: true
+    input_dependent: true
+    stablessm_a: false
+    separate_dbc: false
+    log_a: false
+    bidirectional: true
   ssm:
-    discretization: zoh
-    d_model: 12 # 32 128
-    d_ssm: 6 # 32 128
-    ssm_block_size: 2
-    num_stages: 1 #3 # 1 2
-    num_layers_per_stage: 6 #2 #3
-    dropout: 0.0 #0.25
+    discretization: async
+    d_model: 44
+    d_ssm: 48
+    ssm_block_size: 4
+    num_stages: 1
+    num_layers_per_stage: 1
+    dropout: 0.6241915931552915
     classification_mode: none
-    prenorm: true #true
-    batchnorm: true #true
+    prenorm: true
+    batchnorm: true
     bn_momentum: 0.95
-    pooling_stride: 1 #8 #16 # 1 16
-    pooling_mode: last #avgpool
-    state_expansion_factor: 1 # 1 2
+    pooling_stride: 1
+    pooling_mode: last
+    state_expansion_factor: 1
     encoder_type: embed
-    
