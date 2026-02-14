@@ -1,5 +1,5 @@
 # @package _global_
 
-data_dir: /data/storage/tsoydan/data/eventdatasets # Point it to your own local eventdatasets folder
+data_dir: ./data  # Update to your local data directory
 output_dir: ./outputs/${now:%Y-%m-%d-%H-%M-%S}
 checkpoint_dir: ./checkpoints

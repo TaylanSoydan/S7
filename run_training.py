@@ -1,34 +1,27 @@
+import os
+from functools import partial
 
 import hydra
-from omegaconf import OmegaConf as om
-from omegaconf import DictConfig, open_dict
-from functools import partial
-import os
-
+import jax
 import jax.random
 from flax import jax_utils
 from flax.training import checkpoints
+from omegaconf import OmegaConf as om
+from omegaconf import DictConfig, open_dict
 
-from event_ssm.dataloading import *
-from event_ssm.ssm import init_S5SSM
-from event_ssm.seq_model import *
-from event_ssm.train_utils import training_step, evaluation_step, init_model_state
-from event_ssm.trainer import TrainerModule
-
-import jax.numpy as np
+from src.dataloading import Datasets
+from src.ssm import init_S7SSM
+from src.seq_model import BatchClassificationModel, RetrievalModel
+from src.train_utils import training_step, evaluation_step, init_model_state
+from src.trainer import TrainerModule
 
 
-def setup_training(key ,cfg: DictConfig):
+def setup_training(key, cfg: DictConfig):
     num_devices = jax.local_device_count()
 
-    # load task specific data
     create_dataset_fn = Datasets[cfg.task.name]
 
-    # Create dataset...
     print("[*] Loading dataset...")
-    print(cfg.data_dir)
-
-
     train_loader, val_loader, test_loader, data = create_dataset_fn(
         cache_dir=cfg.data_dir,
         seed=cfg.seed,
@@ -38,26 +31,20 @@ def setup_training(key ,cfg: DictConfig):
     )
 
     with open_dict(cfg):
-        # optax updates the schedule every iteration and not every epoch
         cfg.optimizer.total_steps = cfg.training.num_epochs * len(train_loader) // cfg.optimizer.accumulation_steps
         cfg.optimizer.warmup_steps = cfg.optimizer.warmup_epochs * len(train_loader) // cfg.optimizer.accumulation_steps
-
-        # scale learning rate by batch size
         cfg.optimizer.ssm_lr = cfg.optimizer.ssm_base_lr * cfg.training.per_device_batch_size * num_devices * cfg.optimizer.accumulation_steps
 
-    # load model
     print("[*] Creating model...")
-    print(cfg.task.name)
-    ssm_init_fn = init_S5SSM(**cfg.model.ssm_init)
-    if cfg.task.name=="retrieval-classification":
-        print("Using Retrieval Head")
+    ssm_init_fn = init_S7SSM(**cfg.model.ssm_init)
+    if cfg.task.name == "retrieval-classification":
         model = RetrievalModel(
             ssm=ssm_init_fn,
             num_classes=data.n_classes,
             num_embeddings=data.num_embeddings,
             **cfg.model.ssm,
         )
-    else:    
+    else:
         model = BatchClassificationModel(
             ssm=ssm_init_fn,
             num_classes=data.n_classes,
@@ -65,14 +52,12 @@ def setup_training(key ,cfg: DictConfig):
             **cfg.model.ssm,
         )
 
-
-    # initialize training state
     print("[*] Initializing model state...")
     single_bsz = cfg.training.per_device_batch_size
     batch = next(iter(train_loader))
     inputs, targets, timesteps, lengths = batch
 
-    state = init_model_state(key, model, inputs[:single_bsz], timesteps[:single_bsz], lengths[:single_bsz], cfg.optimizer) #batch_inputs=inputs[:single_bsz])
+    state = init_model_state(key, model, inputs[:single_bsz], timesteps[:single_bsz], lengths[:single_bsz], cfg.optimizer)
 
     if cfg.training.get('from_checkpoint', None):
         print(f'[*] Resuming model from {cfg.training.from_checkpoint}')
@@ -87,17 +72,12 @@ def setup_training(key ,cfg: DictConfig):
         )
         eval_step = jax.pmap(
             partial(evaluation_step, distributed=True, loss_type=cfg.training.loss_type),
-            axis_name='data'
+            axis_name='data',
         )
     else:
-        train_step = jax.jit(
-            partial(training_step, loss_type=cfg.training.loss_type)
-        )
-        eval_step = jax.jit(
-            partial(evaluation_step, loss_type=cfg.training.loss_type)
-        )
+        train_step = jax.jit(partial(training_step, loss_type=cfg.training.loss_type))
+        eval_step = jax.jit(partial(evaluation_step, loss_type=cfg.training.loss_type))
 
-    # set up trainer module
     trainer = TrainerModule(
         train_state=state,
         training_step_fn=train_step,
@@ -111,22 +91,18 @@ def setup_training(key ,cfg: DictConfig):
 
 @hydra.main(version_base=None, config_path='configs', config_name='base')
 def main(config: DictConfig):
-    # print config and save to log directory
     print(om.to_yaml(config))
     with open(os.path.join(config.logging.log_dir, 'config.yaml'), 'w') as f:
         om.save(config, f)
 
-    # Set the random seed manually for reproducibility.
     key = jax.random.PRNGKey(config.seed)
     init_key, dropout_key = jax.random.split(key)
 
     if jax.local_device_count() > 1:
         dropout_key = jax.random.split(dropout_key, jax.local_device_count())
 
-    
-    trainer, train_loader, val_loader, test_loader = setup_training(key=init_key,cfg=config)
+    trainer, train_loader, val_loader, test_loader = setup_training(key=init_key, cfg=config)
 
-    # run training
     print("[*] Running training...")
     trainer.train_model(
         train_loader=train_loader,

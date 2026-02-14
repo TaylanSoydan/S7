@@ -171,4 +171,3 @@ dependencies:
       - xxhash==3.5.0
       - yarl==1.9.4
       - zipp==3.20.1
-prefix: /data/old_home/tsoydan/miniconda3/envs/wormenv

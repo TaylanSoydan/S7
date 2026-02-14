@@ -1,63 +1,84 @@
-# Codebase README
+# S7: Selective and Structured State Spaces for Event-Based Data
 
-## Prerequisites
+A JAX/Flax implementation of S7, a state space model designed for event-based and irregularly-sampled sequence data. S7 extends the S5 architecture with event-aware discretization, enabling effective processing of event streams from neuromorphic sensors, time series, and long-range sequence benchmarks.
 
-1. **Data Folder Setup**:
-   - Ensure the following data folder structure is set up:
-     ```
-     dvs128/
-     eigenworms/
-     eventdatasets/
-     long-range-arena/
-     person/
-     physionet/
-     ptb/
-     walker/
-     wikitext2/
-     wikitext103/
-     ```
+## Installation
 
-2. **Environment Setup**:
-   - Create and activate the Conda environment:
-     ```bash
-     conda create --name testenv python=3.9.19
-     conda activate testenv
-     ```
-   - Install the required Python dependencies:
-     ```bash
-     pip install -r requirements.txt
-     ```
+```bash
+conda create --name s7 python=3.9
+conda activate s7
+pip install -r requirements.txt
+```
 
 ## Configuration
 
-1. **System Configuration**:
-   - Update the `configs/system/local.yaml` file to point to your local `eventdatasets` folder:
-     ```yaml
-     data_dir: /data/storage/tsoydan/data/eventdatasets # Point it to your own local eventdatasets folder
-     ```
+This project uses [Hydra](https://hydra.cc/) for configuration management. All configs are in `configs/`.
 
-2. **Task and Model Configuration**:
-   - Modify the YAML configuration files located inside the `configs/` folder to specify the task and model. For example, update settings for `wikitext2` or other tasks as needed.
+**Set your data directory** in `configs/system/local.yaml`:
+```yaml
+data_dir: /path/to/your/data
+```
 
-## Running Experiments
+## Usage
 
-1. **Run Training**:
-   - Execute the training script with the specified task. Example:
-     ```bash
-     CUDA_VISIBLE_DEVICES=0 python3 run_training.py task=text
-     ```
+### Training
 
-2. **Run a Weights & Biases Sweep**:
-   - Execute a sweep using the following command:
-     ```bash
-     wandb sweep image_sweep.yaml
-     CUDA_VISIBLE_DEVICES=0 wandb agent taylansoydan/event-ssm/la75bvy4
-     ```
+```bash
+# Train on Spiking Speech Commands (default)
+python run_training.py
 
-3. **Evaluate a Checkpoint**:
-   - Use the following command to evaluate a checkpoint:
-     ```bash
-     CUDA_VISIBLE_DEVICES=0 python run_evaluation.py task=text checkpoint=/data/old_home/tsoydan/RPG/event-ssm/checkpoints/best_text/checkpoints
-     ```
-    Make sure that the model and task config parameters are in accordance with the checkpoint model. For example if the checkpoint d_ssm = 70, /configs/model/listops/small.yaml d_ssm should also equal 70.
+# Train on a specific task
+python run_training.py task=spiking-heidelberg-digits
+python run_training.py task=dvs-gesture
+python run_training.py task=text
 
+# Override config values
+python run_training.py task=listops training.per_device_batch_size=32
+```
+
+### Evaluation
+
+```bash
+python run_evaluation.py task=text checkpoint=./best_text/checkpoints
+```
+
+Ensure the model and task config parameters match the checkpoint (e.g., if the checkpoint was trained with `d_ssm=70`, the config must also use `d_ssm=70`).
+
+### Supported Tasks
+
+| Category | Tasks |
+|---|---|
+| Event Streams | `spiking-heidelberg-digits`, `spiking-speech-commands`, `dvs-gesture` |
+| Long Range Arena | `listops`, `text` (IMDB), `retrieval` (AAN), `image` (CIFAR), `pathfinder`, `pathx` |
+| Time Series | `eigenworms`, `personactivity`, `walker` |
+| Language Modeling | `ptb`, `wikitext2` |
+
+## Project Structure
+
+```
+S7/
+├── run_training.py          # Training entry point
+├── run_evaluation.py        # Evaluation entry point
+├── configs/                 # Hydra configuration files
+│   ├── base.yaml            # Default config
+│   ├── task/                # Task-specific configs
+│   ├── model/               # Model architecture configs
+│   ├── system/              # System/path configs
+│   └── logging/             # Logging configs
+├── src/                     # Core library
+│   ├── ssm.py               # S7 state space model
+│   ├── ssm_init.py          # HiPPO initialization
+│   ├── layers.py            # SSM layers and pooling
+│   ├── seq_model.py         # Full sequence models (classification, retrieval)
+│   ├── train_utils.py       # Training/evaluation step functions
+│   ├── trainer.py           # Training loop with logging
+│   ├── transform.py         # Data augmentations (CutMix, jitter, etc.)
+│   ├── s5_compat.py         # Base dataset classes
+│   └── dataloaders/         # Dataset implementations
+│       ├── event_streams.py # SHD, SSC, DVS Gesture
+│       ├── lra.py           # Long Range Arena benchmarks
+│       ├── timeseries.py    # EigenWorms, PersonActivity, Walker
+│       ├── text.py          # PTB, WikiText language modeling
+│       └── collate.py       # Collate functions and dataloader utilities
+└── requirements.txt
+```

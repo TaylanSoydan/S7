@@ -3,25 +3,22 @@ from omegaconf import OmegaConf as om
 from omegaconf import DictConfig, open_dict
 from functools import partial
 
-import jax.random
+import jax
 import jax.numpy as jnp
 import optax
 from flax.training import checkpoints
 
-from event_ssm.dataloading import Datasets
-from event_ssm.ssm import init_S5SSM
-from event_ssm.seq_model import BatchClassificationModel
-from event_ssm.dataloading import *
+from src.dataloading import Datasets
+from src.ssm import init_S7SSM
+from src.seq_model import BatchClassificationModel, RetrievalModel
 
 
 def setup_evaluation(cfg: DictConfig):
     num_devices = jax.local_device_count()
     assert cfg.checkpoint, "No checkpoint directory provided. Use checkpoint=<path> to specify a checkpoint."
 
-    # load task specific data
     create_dataset_fn = Datasets[cfg.task.name]
 
-    # Create dataset...
     print("[*] Loading dataset...")
     train_loader, val_loader, test_loader, data = create_dataset_fn(
         cache_dir=cfg.data_dir,
@@ -31,18 +28,13 @@ def setup_evaluation(cfg: DictConfig):
     )
 
     with open_dict(cfg):
-        # optax updates the schedule every iteration and not every epoch
         cfg.optimizer.total_steps = cfg.training.num_epochs * len(train_loader) // cfg.optimizer.accumulation_steps
         cfg.optimizer.warmup_steps = cfg.optimizer.warmup_epochs * len(train_loader) // cfg.optimizer.accumulation_steps
-
-        # scale learning rate by batch size
         cfg.optimizer.ssm_lr = cfg.optimizer.ssm_base_lr * cfg.training.per_device_batch_size * num_devices * cfg.optimizer.accumulation_steps
 
-    # load model
     print("[*] Creating model...")
-    ssm_init_fn = init_S5SSM(**cfg.model.ssm_init)
+    ssm_init_fn = init_S7SSM(**cfg.model.ssm_init)
     if cfg.task.name == "retrieval-classification":
-        from event_ssm.seq_model import RetrievalModel
         print("Using Retrieval Head for Evaluation")
         model = RetrievalModel(
             ssm=ssm_init_fn,
@@ -58,8 +50,6 @@ def setup_evaluation(cfg: DictConfig):
             **cfg.model.ssm,
         )
 
-
-    # initialize training state
     state = checkpoints.restore_checkpoint(cfg.checkpoint, target=None)
     params = state['params']
     model_state = state['model_state']
@@ -75,23 +65,22 @@ def evaluation_step(
         loss_type,
 ):
     """
-    Evaluates the loss of the function passed as argument on a batch
+    Evaluates the model on a single batch.
 
-    :param train_state: a Flax TrainState that carries the parameters, optimizer states etc
-    :param batch: the data consisting of [data, target]
-    :return: train_state, metrics
+    :param apply_fn: model apply function
+    :param params: model parameters
+    :param model_state: model state (e.g. batch norm statistics)
+    :param batch: the data consisting of [inputs, targets, timesteps, lengths]
+    :param loss_type: one of 'cross_entropy', 'one_hot_cross_entropy', 'mse'
+    :return: metrics dict, predictions
     """
     inputs, targets, integration_timesteps, lengths = batch
     logits = apply_fn(
-
         {'params': params, **model_state},
         inputs, integration_timesteps, lengths,
         False,
     )
 
-    #loss = optax.softmax_cross_entropy(logits, targets)
-    #loss = loss.mean()
-    
     if loss_type == 'cross_entropy':
         loss = optax.softmax_cross_entropy(logits, targets)
     elif loss_type == 'one_hot_cross_entropy':
@@ -101,15 +90,10 @@ def evaluation_step(
     else:
         raise ValueError(f'Unknown loss_type: {loss_type}')
     loss = loss.mean()
-    
-    
-    #preds = jnp.argmax(logits, axis=-1)
-    #targets = jnp.argmax(targets, axis=-1)
-    #accuracy = (preds == targets).mean()
 
     preds = jnp.argmax(logits, axis=-1)
     if loss_type == "one_hot_cross_entropy":
-        targets_class = targets  # Already in class format
+        targets_class = targets
     else:
         targets_class = jnp.argmax(targets, axis=-1)
 
@@ -117,15 +101,15 @@ def evaluation_step(
         accuracy = (preds == targets_class).mean()
         perplexity = jnp.exp(loss)
     elif loss_type == "mse":
-        accuracy = -loss  # MSE does not have a direct accuracy equivalent
+        accuracy = -loss
         perplexity = None
 
-    #return {'loss': loss, 'accuracy': accuracy}, preds
     metrics = {'loss': loss, 'accuracy': accuracy}
     if perplexity is not None:
         metrics['perplexity'] = perplexity
 
     return metrics, preds
+
 
 @hydra.main(version_base=None, config_path='configs', config_name='base')
 def main(config: DictConfig):
@@ -135,7 +119,6 @@ def main(config: DictConfig):
     step = partial(evaluation_step, model.apply, params, model_state, loss_type=config.training.loss_type)
     step = jax.jit(step)
 
-    # run training
     print("[*] Running evaluation...")
     metrics = {}
     events_per_sample = []
