@@ -2,6 +2,8 @@
 
 A JAX/Flax implementation of S7, a state space model designed for event-based and irregularly-sampled sequence data. S7 extends the S5 architecture with event-aware discretization, enabling effective processing of event streams from neuromorphic sensors, time series, and long-range sequence benchmarks.
 
+**Paper:** [S7: Selective and Structured State Spaces for Event-Based Data](https://arxiv.org/abs/2410.03464)
+
 ## Installation
 
 ```bash
@@ -82,3 +84,11 @@ S7/
 │       └── collate.py       # Collate functions and dataloader utilities
 └── requirements.txt
 ```
+
+## Acknowledgements
+
+This codebase builds on the following projects:
+
+- [event-ssm](https://github.com/Efficient-Scalable-Machine-Learning/event-ssm) — event-based SSM code for event stream processing
+- [S5](https://github.com/lindermanlab/S5) — S5 model and Long Range Arena benchmark integration
+- [ode-lstms](https://github.com/mlech26l/ode-lstms) — physics benchmark datasets (PersonActivity, Walker2d)
